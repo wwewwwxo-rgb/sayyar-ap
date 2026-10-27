@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_tts/flutter_tts.dart';
@@ -11,7 +12,8 @@ const Color bg = Color(0xFF090711);
 const Color panel = Color(0xFF171226);
 const Color green = Color(0xFF9B5CFF);
 const Color muted = Color(0xFFB7A9D6);
-const String appUserAgent = 'SayyarNavigation/1.0 (personal small-group app)';
+const String appUserAgent =
+    'SayyarNavigation/1.0 (personal small-group app)';
 
 void main() => runApp(const SayyarApp());
 
@@ -19,21 +21,23 @@ class SayyarApp extends StatelessWidget {
   const SayyarApp({super.key});
 
   @override
-  Widget build(BuildContext context) => MaterialApp(
-        debugShowCheckedModeBanner: false,
-        title: 'SAYYAR',
-        theme: ThemeData(
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      title: 'SAYYAR',
+      theme: ThemeData(
+        brightness: Brightness.dark,
+        scaffoldBackgroundColor: bg,
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: green,
           brightness: Brightness.dark,
-          scaffoldBackgroundColor: bg,
-          colorScheme: ColorScheme.fromSeed(
-            seedColor: green,
-            brightness: Brightness.dark,
-          ),
-          useMaterial3: true,
-          fontFamily: 'sans-serif',
         ),
-        home: const SayyarHome(),
-      );
+        useMaterial3: true,
+        fontFamily: 'sans-serif',
+      ),
+      home: const SayyarHome(),
+    );
+  }
 }
 
 class Place {
@@ -82,13 +86,14 @@ class _SayyarHomeState extends State<SayyarHome> {
 
   StreamSubscription<Position>? positionSubscription;
   DateTime lastSearch = DateTime.fromMillisecondsSinceEpoch(0);
-  int lastSpoken = -1;
 
   @override
   void initState() {
     super.initState();
     _setupTts();
-    WidgetsBinding.instance.addPostFrameCallback((_) => locateUser());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      locateUser();
+    });
   }
 
   Future<void> _setupTts() async {
@@ -120,7 +125,9 @@ class _SayyarHomeState extends State<SayyarHome> {
 
       if (!enabled) {
         if (mounted) {
-          setState(() => status = 'شغّل GPS من إعدادات الهاتف ثم أعد المحاولة');
+          setState(() {
+            status = 'شغّل GPS من إعدادات الهاتف ثم أعد المحاولة';
+          });
         }
         return;
       }
@@ -131,16 +138,14 @@ class _SayyarHomeState extends State<SayyarHome> {
         permission = await Geolocator.requestPermission();
       }
 
-      if (permission == LocationPermission.denied) {
+      if (permission == LocationPermission.denied ||
+          permission == LocationPermission.deniedForever) {
         if (mounted) {
-          setState(() => status = 'إذن الموقع مرفوض؛ اسمح لسيّار باستخدام الموقع');
-        }
-        return;
-      }
-
-      if (permission == LocationPermission.deniedForever) {
-        if (mounted) {
-          setState(() => status = 'إذن الموقع مرفوض نهائياً؛ افتح إعدادات التطبيق');
+          setState(() {
+            status = permission == LocationPermission.deniedForever
+                ? 'إذن الموقع مرفوض نهائياً؛ افتح إعدادات التطبيق'
+                : 'اسمح لسيّار باستخدام الموقع';
+          });
         }
         return;
       }
@@ -162,7 +167,9 @@ class _SayyarHomeState extends State<SayyarHome> {
       mapController.move(current, 15.5);
     } catch (_) {
       if (mounted) {
-        setState(() => status = 'تعذّر تحديد الموقع؛ تأكد من GPS والإنترنت');
+        setState(() {
+          status = 'تعذّر تحديد الموقع؛ تحقق من GPS والإنترنت';
+        });
       }
     } finally {
       if (mounted) {
@@ -175,19 +182,27 @@ class _SayyarHomeState extends State<SayyarHome> {
     final q = query.trim();
 
     if (q.length < 2) {
-      setState(() {
-        results = [];
-        status = 'اكتب اسم مكان أو عنواناً';
-      });
+      if (mounted) {
+        setState(() {
+          results = [];
+          status = 'اكتب اسم مكان أو عنواناً';
+        });
+      }
       return;
     }
 
-    final elapsed = DateTime.now().difference(lastSearch).inMilliseconds;
+    final elapsed =
+        DateTime.now().difference(lastSearch).inMilliseconds;
+
     if (elapsed < 1100) {
-      await Future.delayed(Duration(milliseconds: 1100 - elapsed));
+      await Future.delayed(
+        Duration(milliseconds: 1100 - elapsed),
+      );
     }
 
     lastSearch = DateTime.now();
+
+    if (!mounted) return;
 
     setState(() {
       searching = true;
@@ -220,12 +235,13 @@ class _SayyarHomeState extends State<SayyarHome> {
         throw Exception('HTTP ${response.statusCode}');
       }
 
-      final List data = jsonDecode(response.body) as List;
+      final List<dynamic> data = jsonDecode(response.body) as List;
 
       final parsed = data.map((item) {
         final m = item as Map<String, dynamic>;
         final display = (m['display_name'] ?? '').toString();
-        final name = (m['name'] ?? display.split(',').first).toString();
+        final name =
+            (m['name'] ?? display.split(',').first).toString();
 
         return Place(
           name,
@@ -247,7 +263,9 @@ class _SayyarHomeState extends State<SayyarHome> {
       });
     } catch (_) {
       if (mounted) {
-        setState(() => status = 'فشل البحث؛ تأكد من الإنترنت وحاول لاحقاً');
+        setState(() {
+          status = 'فشل البحث؛ تأكد من الإنترنت وحاول لاحقاً';
+        });
       }
     } finally {
       if (mounted) {
@@ -258,144 +276,158 @@ class _SayyarHomeState extends State<SayyarHome> {
 
   Future<void> openSearch() async {
     searchController.clear();
-
     setState(() => results = []);
 
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       backgroundColor: panel,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setSheet) {
-          return Padding(
-            padding: EdgeInsets.fromLTRB(
-              16,
-              18,
-              16,
-              MediaQuery.of(ctx).viewInsets.bottom + 20,
-            ),
-            child: SizedBox(
-              height: MediaQuery.of(ctx).size.height * 0.68,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Row(
-                    children: [
-                      const Expanded(
-                        child: Text(
-                          'وين تريد تروح؟',
-                          style: TextStyle(
-                            fontSize: 21,
-                            fontWeight: FontWeight.bold,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (ctx, setSheet) {
+            return Padding(
+              padding: EdgeInsets.fromLTRB(
+                16,
+                18,
+                16,
+                MediaQuery.of(ctx).viewInsets.bottom + 20,
+              ),
+              child: SizedBox(
+                height: MediaQuery.of(ctx).size.height * 0.68,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Row(
+                      children: [
+                        const Expanded(
+                          child: Text(
+                            'وين تريد تروح؟',
+                            style: TextStyle(
+                              fontSize: 21,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ),
-                      ),
-                      IconButton(
-                        onPressed: () => Navigator.pop(ctx),
-                        icon: const Icon(Icons.close),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  TextField(
-                    controller: searchController,
-                    textInputAction: TextInputAction.search,
-                    onSubmitted: (v) async {
-                      await searchPlaces(v);
-                      setSheet(() {});
-                    },
-                    decoration: InputDecoration(
-                      hintText: 'اكتب اسم المكان أو العنوان',
-                      filled: true,
-                      fillColor: bg,
-                      prefixIcon: const Icon(Icons.search, color: green),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(16),
-                        borderSide: BorderSide.none,
+                        IconButton(
+                          onPressed: () => Navigator.pop(ctx),
+                          icon: const Icon(Icons.close),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    TextField(
+                      controller: searchController,
+                      textInputAction: TextInputAction.search,
+                      onSubmitted: (v) async {
+                        await searchPlaces(v);
+                        if (ctx.mounted) setSheet(() {});
+                      },
+                      decoration: InputDecoration(
+                        hintText: 'اكتب اسم المكان أو العنوان',
+                        filled: true,
+                        fillColor: bg,
+                        prefixIcon:
+                            const Icon(Icons.search, color: green),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: BorderSide.none,
+                        ),
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 8),
-                  FilledButton.icon(
-                    onPressed: searching
-                        ? null
-                        : () async {
-                            await searchPlaces(searchController.text);
-                            setSheet(() {});
-                          },
-                    icon: searching
-                        ? const SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Icon(Icons.search),
-                    label: Text(searching ? 'جارٍ البحث…' : 'ابحث'),
-                    style: FilledButton.styleFrom(
-                      backgroundColor: green,
-                      foregroundColor: bg,
-                      padding: const EdgeInsets.all(14),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    status,
-                    style: const TextStyle(color: muted, fontSize: 12),
-                  ),
-                  const SizedBox(height: 6),
-                  Expanded(
-                    child: results.isEmpty
-                        ? const Center(
-                            child: Text(
-                              'نتائج الأماكن تظهر هنا',
-                              style: TextStyle(color: muted),
-                            ),
-                          )
-                        : ListView.separated(
-                            itemCount: results.length,
-                            separatorBuilder: (_, __) =>
-                                const Divider(color: Colors.white10),
-                            itemBuilder: (_, i) {
-                              final p = results[i];
-
-                              return ListTile(
-                                leading: const CircleAvatar(
-                                  backgroundColor: bg,
-                                  child: Icon(Icons.place, color: green),
-                                ),
-                                title: Text(
-                                  p.name,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                                subtitle: Text(
-                                  p.displayName,
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                                onTap: () {
-                                  setState(() {
-                                    destination = p.point;
-                                    destinationName = p.name;
-                                    routePoints = [];
-                                    maneuvers = [];
-                                    routeSummary = '';
-                                  });
-
-                                  mapController.move(p.point, 15.5);
-                                  Navigator.pop(ctx);
-                                  _showDestinationPanel();
-                                },
+                    const SizedBox(height: 8),
+                    FilledButton.icon(
+                      onPressed: searching
+                          ? null
+                          : () async {
+                              await searchPlaces(
+                                searchController.text,
                               );
+                              if (ctx.mounted) setSheet(() {});
                             },
-                          ),
-                  ),
-                ],
+                      icon: searching
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                              ),
+                            )
+                          : const Icon(Icons.search),
+                      label: Text(
+                        searching ? 'جارٍ البحث…' : 'ابحث',
+                      ),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: green,
+                        foregroundColor: bg,
+                        padding: const EdgeInsets.all(14),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      status,
+                      style: const TextStyle(
+                        color: muted,
+                        fontSize: 12,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Expanded(
+                      child: results.isEmpty
+                          ? const Center(
+                              child: Text(
+                                'نتائج الأماكن تظهر هنا',
+                                style: TextStyle(color: muted),
+                              ),
+                            )
+                          : ListView.separated(
+                              itemCount: results.length,
+                              separatorBuilder: (_, __) =>
+                                  const Divider(color: Colors.white10),
+                              itemBuilder: (_, i) {
+                                final p = results[i];
+
+                                return ListTile(
+                                  leading: const CircleAvatar(
+                                    backgroundColor: bg,
+                                    child: Icon(
+                                      Icons.place,
+                                      color: green,
+                                    ),
+                                  ),
+                                  title: Text(
+                                    p.name,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  subtitle: Text(
+                                    p.displayName,
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  onTap: () {
+                                    setState(() {
+                                      destination = p.point;
+                                      destinationName = p.name;
+                                      routePoints = [];
+                                      maneuvers = [];
+                                      routeSummary = '';
+                                    });
+
+                                    mapController.move(p.point, 15.5);
+                                    Navigator.pop(ctx);
+                                    _showDestinationPanel();
+                                  },
+                                );
+                              },
+                            ),
+                    ),
+                  ],
+                ),
               ),
-            ),
-          );
-        },
-      ),
+            );
+          },
+        );
+      },
     );
   }
 
@@ -411,7 +443,10 @@ class _SayyarHomeState extends State<SayyarHome> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Text('الوجهة المحددة', style: TextStyle(color: muted)),
+            const Text(
+              'الوجهة المحددة',
+              style: TextStyle(color: muted),
+            ),
             const SizedBox(height: 6),
             Text(
               destinationName,
@@ -435,7 +470,9 @@ class _SayyarHomeState extends State<SayyarHome> {
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
                   : const Icon(Icons.alt_route),
-              label: Text(routing ? 'جارٍ حساب الطريق…' : 'احسب الطريق'),
+              label: Text(
+                routing ? 'جارٍ حساب الطريق…' : 'احسب الطريق',
+              ),
               style: FilledButton.styleFrom(
                 backgroundColor: green,
                 foregroundColor: bg,
@@ -453,7 +490,7 @@ class _SayyarHomeState extends State<SayyarHome> {
   }
 
   Future<void> calculateRoute() async {
-    if (destination == null) return;
+    if (destination == null || routing) return;
 
     setState(() {
       routing = true;
@@ -513,14 +550,17 @@ class _SayyarHomeState extends State<SayyarHome> {
       final shape = (leg['shape'] ?? '').toString();
       final decoded = _decodePolyline6(shape);
 
-      if (decoded.length < 2) throw Exception('Empty route geometry');
+      if (decoded.length < 2) {
+        throw Exception('Empty route geometry');
+      }
 
       final maneuversRaw = (leg['maneuvers'] as List?) ?? [];
       final parsedManeuvers = <Maneuver>[];
 
       for (final raw in maneuversRaw) {
         final m = raw as Map<String, dynamic>;
-        final index = (m['begin_shape_index'] as num?)?.toInt() ?? 0;
+        final index =
+            (m['begin_shape_index'] as num?)?.toInt() ?? 0;
         final safeIndex = index.clamp(0, decoded.length - 1);
 
         final instruction =
@@ -536,7 +576,7 @@ class _SayyarHomeState extends State<SayyarHome> {
         }
       }
 
-      final summary = (leg['summary'] as Map<String, dynamic>?) ?? {};
+      final summary = leg['summary'] as Map<String, dynamic>? ?? {};
       final km = (summary['length'] as num?)?.toDouble();
       final secs = (summary['time'] as num?)?.toDouble();
 
@@ -561,7 +601,8 @@ class _SayyarHomeState extends State<SayyarHome> {
     } catch (_) {
       if (mounted) {
         setState(() {
-          status = 'تعذّر حساب الطريق؛ جرّب مرة ثانية أو تحقق من الإنترنت';
+          status =
+              'تعذّر حساب الطريق؛ جرّب مرة ثانية أو تحقق من الإنترنت';
         });
       }
     } finally {
@@ -571,15 +612,12 @@ class _SayyarHomeState extends State<SayyarHome> {
 
   String _duration(double seconds) {
     final mins = (seconds / 60).round();
-
     if (mins < 60) return '$mins دقيقة';
-
     return '${mins ~/ 60} س ${mins % 60} د';
   }
 
   List<LatLng> _decodePolyline6(String encoded) {
     final points = <LatLng>[];
-
     int index = 0;
     int lat = 0;
     int lon = 0;
@@ -590,10 +628,11 @@ class _SayyarHomeState extends State<SayyarHome> {
       int b;
 
       do {
+        if (index >= encoded.length) return points;
         b = encoded.codeUnitAt(index++) - 63;
         result |= (b & 0x1f) << shift;
         shift += 5;
-      } while (b >= 0x20 && index < encoded.length);
+      } while (b >= 0x20);
 
       lat += (result & 1) != 0 ? ~(result >> 1) : (result >> 1);
 
@@ -601,10 +640,11 @@ class _SayyarHomeState extends State<SayyarHome> {
       shift = 0;
 
       do {
+        if (index >= encoded.length) return points;
         b = encoded.codeUnitAt(index++) - 63;
         result |= (b & 0x1f) << shift;
         shift += 5;
-      } while (b >= 0x20 && index < encoded.length);
+      } while (b >= 0x20);
 
       lon += (result & 1) != 0 ? ~(result >> 1) : (result >> 1);
 
@@ -615,12 +655,10 @@ class _SayyarHomeState extends State<SayyarHome> {
   }
 
   Future<void> startNavigation() async {
-    if (routePoints.isEmpty) return;
+    if (routePoints.isEmpty || navigating) return;
 
     setState(() {
       navigating = true;
-      lastSpoken = -1;
-
       for (final maneuver in maneuvers) {
         maneuver.spoken = false;
       }
@@ -630,7 +668,6 @@ class _SayyarHomeState extends State<SayyarHome> {
 
     try {
       await tts.setLanguage('ar');
-
       if (maneuvers.isNotEmpty) {
         await tts.speak('بدأت الملاحة. ${maneuvers.first.instruction}');
         maneuvers.first.spoken = true;
@@ -645,7 +682,6 @@ class _SayyarHomeState extends State<SayyarHome> {
     ).listen(
       (p) async {
         final here = LatLng(p.latitude, p.longitude);
-
         if (!mounted) return;
 
         setState(() => current = here);
@@ -653,30 +689,29 @@ class _SayyarHomeState extends State<SayyarHome> {
 
         if (!navigating || maneuvers.isEmpty) return;
 
-        for (int i = 0; i < maneuvers.length; i++) {
-          if (maneuvers[i].spoken) continue;
+        for (final maneuver in maneuvers) {
+          if (maneuver.spoken) continue;
 
           final distance = const Distance().as(
             LengthUnit.Meter,
             here,
-            maneuvers[i].point,
+            maneuver.point,
           );
 
           if (distance < 250) {
-            maneuvers[i].spoken = true;
-            lastSpoken = i;
-
+            maneuver.spoken = true;
             try {
-              await tts.speak(maneuvers[i].instruction);
+              await tts.speak(maneuver.instruction);
             } catch (_) {}
-
             break;
           }
         }
       },
       onError: (_) {
         if (mounted) {
-          setState(() => status = 'انقطع تحديث الموقع؛ تحقق من إذن الموقع');
+          setState(() {
+            status = 'انقطع تحديث الموقع؛ تحقق من إذن الموقع';
+          });
         }
       },
     );
@@ -697,22 +732,21 @@ class _SayyarHomeState extends State<SayyarHome> {
 
   @override
   Widget build(BuildContext context) {
-    final center = current;
-
     return Scaffold(
       body: Stack(
         children: [
           FlutterMap(
             mapController: mapController,
             options: MapOptions(
-              initialCenter: center,
+              initialCenter: current,
               initialZoom: 13.5,
               minZoom: 3,
               maxZoom: 19,
             ),
             children: [
               TileLayer(
-                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                urlTemplate:
+                    'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                 userAgentPackageName: 'com.sayyar.navigation',
                 maxNativeZoom: 19,
               ),
@@ -741,7 +775,10 @@ class _SayyarHomeState extends State<SayyarHome> {
                       decoration: BoxDecoration(
                         color: green,
                         shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white, width: 3),
+                        border: Border.all(
+                          color: Colors.white,
+                          width: 3,
+                        ),
                         boxShadow: const [
                           BoxShadow(
                             color: Colors.black45,
@@ -937,8 +974,9 @@ class _SayyarHomeState extends State<SayyarHome> {
                             ),
                           ),
                           IconButton(
-                            onPressed: () {
-                              stopNavigation();
+                            onPressed: () async {
+                              await stopNavigation();
+                              if (!mounted) return;
                               setState(() {
                                 destination = null;
                                 destinationName = '';
@@ -947,7 +985,10 @@ class _SayyarHomeState extends State<SayyarHome> {
                                 routeSummary = '';
                               });
                             },
-                            icon: const Icon(Icons.close, color: muted),
+                            icon: const Icon(
+                              Icons.close,
+                              color: muted,
+                            ),
                           ),
                         ],
                       ),
@@ -962,8 +1003,12 @@ class _SayyarHomeState extends State<SayyarHome> {
                             label: const Text('اختيار وجهة'),
                             style: OutlinedButton.styleFrom(
                               foregroundColor: Colors.white,
-                              side: const BorderSide(color: Colors.white24),
-                              padding: const EdgeInsets.symmetric(vertical: 13),
+                              side: const BorderSide(
+                                color: Colors.white24,
+                              ),
+                              padding: const EdgeInsets.symmetric(
+                                vertical: 13,
+                              ),
                             ),
                           ),
                         ),
@@ -994,7 +1039,9 @@ class _SayyarHomeState extends State<SayyarHome> {
                             style: FilledButton.styleFrom(
                               backgroundColor: green,
                               foregroundColor: bg,
-                              padding: const EdgeInsets.symmetric(vertical: 13),
+                              padding: const EdgeInsets.symmetric(
+                                vertical: 13,
+                              ),
                             ),
                           ),
                         ),
